@@ -1,6 +1,33 @@
 @ClientCRUD_HostAddress = https://localhost:7293
 
+### Get all items
 GET {{ClientCRUD_HostAddress}}/items
 Accept: application/json
 
-###
+### Get item by ID
+GET {{ClientCRUD_HostAddress}}/items/{id}
+Accept: application/json
+
+### Add a new item
+POST {{ClientCRUD_HostAddress}}/items
+Content-Type: application/json
+
+{
+  "id": "123",
+  "address": "123 Main St",
+  "description": "Sample description"
+}
+
+### Update an existing item
+PUT {{ClientCRUD_HostAddress}}/items
+Content-Type: application/json
+
+{
+  "id": "123",
+  "address": "123 Main St",
+  "description": "Updated description"
+}
+
+### Delete an item
+DELETE {{ClientCRUD_HostAddress}}/items/1
+Accept: application/json

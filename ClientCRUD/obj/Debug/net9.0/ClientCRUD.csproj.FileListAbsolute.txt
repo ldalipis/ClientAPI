@@ -36,3 +36,4 @@ C:\Users\lefto\source\repos\ClientCRUD\ClientCRUD\obj\Debug\net9.0\ref\ClientCRU
 C:\Users\lefto\source\repos\ClientCRUD\ClientCRUD\bin\Debug\net9.0\Swashbuckle.AspNetCore.Swagger.dll
 C:\Users\lefto\source\repos\ClientCRUD\ClientCRUD\bin\Debug\net9.0\Swashbuckle.AspNetCore.SwaggerGen.dll
 C:\Users\lefto\source\repos\ClientCRUD\ClientCRUD\bin\Debug\net9.0\Swashbuckle.AspNetCore.SwaggerUI.dll
+C:\Users\lefto\source\repos\ClientCRUD\ClientCRUD\obj\Debug\net9.0\ClientCRUD.sourcelink.json

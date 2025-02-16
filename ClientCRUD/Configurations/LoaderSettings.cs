@@ -4,11 +4,11 @@ namespace ClientCRUD.Configurations
 {
     public class LoaderSettings
     {
-        public string? LocalFile { get; set; }
-        public string? Server { get; set; }
-        public string? UserId { get; set; }
-        public string? Password { get; set; }
-        public string? LoaderType { get; set; }
+        public string? LocalFile { get; init; }
+        public string? Server { get; init; }
+        public string? UserId { get; init; }
+        public string? Password { get; init; }
+        public string? LoaderType { get; init; }
     }
 
     public class LoaderSettingsValidation : IValidateOptions<LoaderSettings>

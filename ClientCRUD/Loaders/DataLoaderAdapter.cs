@@ -6,7 +6,7 @@ namespace ClientCRUD.Loaders;
 
 public class DataLoaderAdapter(DataLoader dataLoader) : IResourceLoader
 {
-    public async Task AddAsync(UnifiedRequestModel request, CancellationToken cancellationToken = default)
+    public async Task AddAsync(IUnifiedRequestModel request, CancellationToken cancellationToken = default)
     {
         var trader = new Trader
         {
@@ -17,7 +17,7 @@ public class DataLoaderAdapter(DataLoader dataLoader) : IResourceLoader
         await dataLoader.InsertTrader(trader);
     }
 
-    public async Task<IEnumerable<UnifiedResponseModel>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<IUnifiedResponseModel>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         var traders = await dataLoader.LoadTraders();
         var response = traders.Select(t => new UnifiedResponseModel
@@ -30,7 +30,7 @@ public class DataLoaderAdapter(DataLoader dataLoader) : IResourceLoader
         return response;
     }
 
-    public async Task<UnifiedResponseModel> GetByIdAsync(string id, CancellationToken cancellationToken = default)
+    public async Task<IUnifiedResponseModel> GetByIdAsync(string id, CancellationToken cancellationToken = default)
     {
         var trader = await dataLoader.LoadTrader(id);
 
@@ -44,7 +44,7 @@ public class DataLoaderAdapter(DataLoader dataLoader) : IResourceLoader
         return response;
     }
 
-    public async Task UpdateAsync(UnifiedRequestModel request, CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(IUnifiedRequestModel request, CancellationToken cancellationToken = default)
     {
         var trader = new Trader
         {
