@@ -4,7 +4,7 @@ using FileLoader;
 
 namespace ClientCRUD.Loaders;
 
-public class LoaderAdapter(Loader loader) : IResourceLoader
+public class LoaderAdapter(ILoader loader) : IResourceLoader
 {
     public Task AddAsync(IUnifiedRequestModel request, CancellationToken cancellationToken = default)
     {
@@ -18,9 +18,9 @@ public class LoaderAdapter(Loader loader) : IResourceLoader
         return Task.CompletedTask;
     }
 
-    public Task<IEnumerable<IUnifiedResponseModel>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<IUnifiedResponseModel>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        var suppliers = loader.LoadSuppliers();
+        var suppliers = await loader.LoadSuppliers();
         var response = suppliers.Select(s => new UnifiedResponseModel
         {
             Id = s.Id,
@@ -28,12 +28,12 @@ public class LoaderAdapter(Loader loader) : IResourceLoader
             Address = s.Address,
             Source = "File"
         });
-        return Task.FromResult<IEnumerable<IUnifiedResponseModel>>(response);
+        return response;
     }
 
-    public Task<IUnifiedResponseModel> GetByIdAsync(string id, CancellationToken cancellationToken = default)
+    public async Task<IUnifiedResponseModel> GetByIdAsync(string id, CancellationToken cancellationToken = default)
     {
-        var supplier = loader.LoadSupplier(id);
+        var supplier = await loader.LoadSupplier(id);
         var response = new UnifiedResponseModel
         {
             Id = supplier.Id,
@@ -41,7 +41,7 @@ public class LoaderAdapter(Loader loader) : IResourceLoader
             Address = supplier.Address,
             Source = "File"
         };
-        return Task.FromResult<IUnifiedResponseModel>(response);
+        return response;
     }
 
     public Task UpdateAsync(IUnifiedRequestModel request, CancellationToken cancellationToken = default)

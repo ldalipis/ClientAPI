@@ -1,8 +1,6 @@
 ﻿using ClientCRUD.Abstracts;
 using ClientCRUD.Configurations;
 using ClientCRUD.Loaders;
-using FileLoader;
-using SqlServerLoader;
 
 namespace ClientCRUD.Extensions;
 
@@ -10,11 +8,14 @@ public static class ServiceRegistration
 {
     public static void AddLoaderServices(this IServiceCollection services, LoaderSettings loaderSettings)
     {
-        services.AddScoped<LoaderAdapter>(_ => new LoaderAdapter(new Loader(loaderSettings.LocalFile)));
-        services.AddScoped<DataLoaderAdapter>(_ => new DataLoaderAdapter(new DataLoader(
-            loaderSettings.Server,
-            loaderSettings.UserId,
-            loaderSettings.Password)));
+        services.AddScoped<ILoader>(_ => new LoaderWrapper(loaderSettings.LocalFile ?? string.Empty));
+        services.AddScoped<IDataLoader>(_ => new DataLoaderWrapper(
+            loaderSettings.Server ?? string.Empty,
+            loaderSettings.UserId ?? string.Empty,
+            loaderSettings.Password ?? string.Empty));
+
+        services.AddScoped<LoaderAdapter>();
+        services.AddScoped<DataLoaderAdapter>();
 
         services.AddScoped<IResourceLoader>(sp =>
         {

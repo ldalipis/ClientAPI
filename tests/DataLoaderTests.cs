@@ -1,160 +1,131 @@
-﻿using FluentAssertions;
+﻿using ClientCRUD.Abstracts;
+using ClientCRUD.Loaders;
+using ClientCRUD.Models;
+using Moq;
 using SqlServerLoader;
+using FluentAssertions;
 
 namespace tests;
 
-public class DataLoaderTests : IDisposable
+public class DataLoaderAdapterTests
 {
-    private readonly DataLoader _dataLoader;
+    private readonly Mock<IDataLoader> _mockDataLoader;
+    private readonly DataLoaderAdapter _sut;
 
-    public DataLoaderTests()
+    public DataLoaderAdapterTests()
     {
-        _dataLoader = new DataLoader("server", "userid", "password");
-        ResetData();
-    }
-
-    private static void ResetData()
-    {
-        var list = new List<Trader>
-        {
-            new() { Code = "sql1", Street = "sqlAdd1", Description = "sqlSupp1" },
-            new() { Code = "sql2", Street = "sqlAdd2", Description = "sqlSupp2" }
-        };
-
-        // We need to use reflection to reset the static list since it's private
-        var field = typeof(DataLoader).GetField("traders",
-            System.Reflection.BindingFlags.NonPublic |
-            System.Reflection.BindingFlags.Static);
-
-        field?.SetValue(null, list);
-    }
-
-    public void Dispose()
-    {
-        ResetData();
-        GC.SuppressFinalize(this);
+        _mockDataLoader = new Mock<IDataLoader>();
+        _sut = new DataLoaderAdapter(_mockDataLoader.Object);
     }
 
     [Fact]
-    public async Task LoadTrader_WithValidCode_ReturnsTrader()
+    public async Task AddAsync_ShouldCallInsertTrader_WithCorrectData()
     {
         // Arrange
-        const string code = "sql1";
+        var request = new UnifiedRequestModel
+        {
+            Id = "TEST001",
+            Description = "Test Trader",
+            Address = "123 Test Street"
+        };
 
         // Act
-        var result = await _dataLoader.LoadTrader(code);
+        await _sut.AddAsync(request);
+
+        // Assert
+        _mockDataLoader.Verify(x => x.InsertTrader(It.Is<Trader>(t =>
+            t.Code == request.Id &&
+            t.Description == request.Description &&
+            t.Street == request.Address)), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_ShouldReturnMappedTraders()
+    {
+        // Arrange
+        var traders = new List<Trader>
+        {
+            new() { Code = "T1", Description = "Trader 1", Street = "Street 1" },
+            new() { Code = "T2", Description = "Trader 2", Street = "Street 2" }
+        };
+
+        _mockDataLoader.Setup(x => x.LoadTraders())
+            .ReturnsAsync(traders);
+
+        // Act
+        var result = await _sut.GetAllAsync();
+
+        // Assert
+        var resultList = result.ToList();
+        resultList.Should().HaveCount(2);
+        resultList.Should().AllBeOfType<UnifiedResponseModel>();
+        resultList.Should().AllSatisfy(r => r.Source.Should().Be("Database"));
+
+        resultList[0].Id.Should().Be("T1");
+        resultList[0].Description.Should().Be("Trader 1");
+        resultList[0].Address.Should().Be("Street 1");
+
+        resultList[1].Id.Should().Be("T2");
+        resultList[1].Description.Should().Be("Trader 2");
+        resultList[1].Address.Should().Be("Street 2");
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_ShouldReturnMappedTrader()
+    {
+        // Arrange
+        var trader = new Trader
+        {
+            Code = "T1",
+            Description = "Trader 1",
+            Street = "Street 1"
+        };
+
+        _mockDataLoader.Setup(x => x.LoadTrader("T1"))
+            .ReturnsAsync(trader);
+
+        // Act
+        var result = await _sut.GetByIdAsync("T1");
 
         // Assert
         result.Should().NotBeNull();
-        result.Code.Should().Be("sql1");
-        result.Description.Should().Be("sqlSupp1");
-        result.Street.Should().Be("sqlAdd1");
+        result.Id.Should().Be("T1");
+        result.Description.Should().Be("Trader 1");
+        result.Address.Should().Be("Street 1");
+        result.Source.Should().Be("Database");
     }
 
     [Fact]
-    public async Task LoadTrader_WithInvalidCode_ThrowsException()
+    public async Task UpdateAsync_ShouldCallUpdateTrader_WithCorrectData()
     {
         // Arrange
-        const string code = "nonexistent";
-
-        // Act
-        var act = () => _dataLoader.LoadTrader(code);
-
-        // Assert
-        await act.Should().ThrowAsync<Exception>()
-            .WithMessage("Trader not found");
-    }
-
-    [Fact]
-    public async Task LoadTraders_ReturnsAllTraders()
-    {
-        // Act
-        var result = await _dataLoader.LoadTraders();
-
-        // Assert
-        result.Should().HaveCount(2);
-        result.Should().Contain(t => t.Code == "sql1");
-        result.Should().Contain(t => t.Code == "sql2");
-    }
-
-    [Fact]
-    public async Task InsertTrader_WithValidTrader_AddsToList()
-    {
-        // Arrange
-        var trader = new Trader
+        var request = new UnifiedRequestModel
         {
-            Code = "sql3",
-            Description = "sqlSupp3",
-            Street = "sqlAdd3"
+            Id = "TEST001",
+            Description = "Updated Trader",
+            Address = "456 Updated Street"
         };
 
         // Act
-        await _dataLoader.InsertTrader(trader);
-        var result = await _dataLoader.LoadTraders();
+        await _sut.UpdateAsync(request);
 
         // Assert
-        result.Should().Contain(t => t.Code == "sql3");
-    }
-
-    [Theory]
-    [InlineData("", "Description")]
-    [InlineData("Code", "")]
-    public async Task InsertTrader_WithInvalidData_ThrowsException(string code, string description)
-    {
-        // Arrange
-        var trader = new Trader { Code = code, Description = description };
-
-        // Act
-        var act = () => _dataLoader.InsertTrader(trader);
-
-        // Assert
-        await act.Should().ThrowAsync<Exception>()
-            .WithMessage("Code and description are required");
+        _mockDataLoader.Verify(x => x.UpdateTrader(It.Is<Trader>(t =>
+            t.Code == request.Id &&
+            t.Description == request.Description &&
+            t.Street == request.Address)), Times.Once);
     }
 
     [Fact]
-    public async Task UpdateTrader_WithValidTrader_UpdatesExistingTrader()
+    public async Task DeleteAsync_ShouldCallDeleteTrader_WithCorrectId()
     {
         // Arrange
-        var trader = new Trader
-        {
-            Code = "sql1",
-            Description = "Updated",
-            Street = "NewStreet"
-        };
+        const string id = "TEST001";
 
         // Act
-        await _dataLoader.UpdateTrader(trader);
-        var result = await _dataLoader.LoadTrader("sql1");
+        await _sut.DeleteAsync(id);
 
         // Assert
-        result.Description.Should().Be("Updated");
-        result.Street.Should().Be("NewStreet");
-    }
-
-    [Fact]
-    public async Task DeleteTrader_WithValidCode_RemovesTrader()
-    {
-        // Arrange
-        const string code = "sql1";
-
-        // Act
-        await _dataLoader.DeleteTrader(code);
-        var result = await _dataLoader.LoadTraders();
-
-        // Assert
-        result.Should().NotContain(t => t.Code == "sql1");
-    }
-
-    [Fact]
-    public void Constructor_WithInvalidConnectionInfo_ThrowsException()
-    {
-        // Arrange & Act
-        var act = () => new DataLoader("wrongServer", "wrongUser", "wrongPass")
-            .LoadTraders();
-
-        // Assert
-        act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("Wrong connection info");
+        _mockDataLoader.Verify(x => x.DeleteTrader(id), Times.Once);
     }
 }

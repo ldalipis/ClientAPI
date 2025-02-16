@@ -4,7 +4,7 @@ using SqlServerLoader;
 
 namespace ClientCRUD.Loaders;
 
-public class DataLoaderAdapter(DataLoader dataLoader) : IResourceLoader
+public class DataLoaderAdapter(IDataLoader dataLoader) : IResourceLoader
 {
     public async Task AddAsync(IUnifiedRequestModel request, CancellationToken cancellationToken = default)
     {

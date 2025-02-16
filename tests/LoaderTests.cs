@@ -1,138 +1,161 @@
-﻿using FluentAssertions;
+﻿using ClientCRUD.Abstracts;
+using ClientCRUD.Loaders;
+using ClientCRUD.Models;
 using FileLoader;
+using Moq;
 
-namespace tests;
-
-public class LoaderTests : IDisposable
+namespace ClientCRUD.Tests.Loaders
 {
-    private readonly Loader _loader;
-
-    public LoaderTests()
+    public class LoaderAdapterTests
     {
-        _loader = new Loader("suppliers.txt");
-        ResetData();
-    }
+        private readonly Mock<ILoader> _loaderMock;
+        private readonly LoaderAdapter _sut;
 
-    private void ResetData()
-    {
-        var newList = new List<Supplier>
+        public LoaderAdapterTests()
         {
-            new() { Id = "1", Address = "Add1", Name = "Supp1" },
-            new() { Id = "2", Address = "Add2", Name = "Supp2" },
-            new() { Id = "3", Address = "Add3", Name = "Supp3" }
-        };
+            _loaderMock = new Mock<ILoader>();
+            _sut = new LoaderAdapter(_loaderMock.Object);
+        }
 
-        var field = typeof(Loader).GetField("suppliers",
-            System.Reflection.BindingFlags.NonPublic |
-            System.Reflection.BindingFlags.Static);
+        [Fact]
+        public async Task AddAsync_ShouldCallInsertSupplier_WithCorrectData()
+        {
+            // Arrange
+            var request = new UnifiedRequestModel
+            {
+                Id = "test-id",
+                Description = "Test Supplier",
+                Address = "Test Address"
+            };
 
-        field?.SetValue(null, newList);
-    }
+            // Act
+            await _sut.AddAsync(request);
 
-    public void Dispose()
-    {
-        ResetData();
-        GC.SuppressFinalize(this);
-    }
+            // Assert
+            _loaderMock.Verify(x => x.InsertSupplier(It.Is<Supplier>(s =>
+                s.Id == request.Id &&
+                s.Name == request.Description &&
+                s.Address == request.Address)), Times.Once);
+        }
 
-    [Fact]
-    public void LoadSupplier_WithValidId_ReturnsSupplier()
-    {
-        // Arrange
-        const string id = "1";
+        [Fact]
+        public async Task GetAllAsync_ShouldReturnMappedSuppliers()
+        {
+            // Arrange
+            var suppliers = new List<Supplier>
+            {
+                new() { Id = "1", Name = "Supplier 1", Address = "Address 1" },
+                new() { Id = "2", Name = "Supplier 2", Address = "Address 2" }
+            };
 
-        // Act
-        var result = _loader.LoadSupplier(id);
+            _loaderMock.Setup(x => x.LoadSuppliers())
+                .ReturnsAsync(suppliers);
 
-        // Assert
-        result.Should().NotBeNull();
-        result.Id.Should().Be("1");
-        result.Name.Should().Be("Supp1");
-        result.Address.Should().Be("Add1");
-    }
+            // Act
+            var result = await _sut.GetAllAsync();
 
-    [Fact]
-    public void LoadSupplier_WithInvalidId_ThrowsApiException()
-    {
-        // Arrange
-        const string id = "nonexistent";
+            // Assert
+            var responseList = result.ToList();
+            Assert.Equal(2, responseList.Count);
+            Assert.All(responseList, r => Assert.Equal("File", r.Source));
+            Assert.Collection(responseList,
+                item =>
+                {
+                    Assert.Equal("1", item.Id);
+                    Assert.Equal("Supplier 1", item.Description);
+                    Assert.Equal("Address 1", item.Address);
+                },
+                item =>
+                {
+                    Assert.Equal("2", item.Id);
+                    Assert.Equal("Supplier 2", item.Description);
+                    Assert.Equal("Address 2", item.Address);
+                });
+        }
 
-        // Act
-        var act = () => _loader.LoadSupplier(id);
+        [Fact]
+        public async Task GetByIdAsync_ShouldReturnMappedSupplier()
+        {
+            // Arrange
+            var supplier = new Supplier
+            {
+                Id = "test-id",
+                Name = "Test Supplier",
+                Address = "Test Address"
+            };
 
-        // Assert
-        act.Should().Throw<ApiException>();
-    }
+            _loaderMock.Setup(x => x.LoadSupplier("test-id"))
+                .ReturnsAsync(supplier);
 
-    [Fact]
-    public void LoadSuppliers_ReturnsAllSuppliers()
-    {
-        // Act
-        var result = _loader.LoadSuppliers();
+            // Act
+            var result = await _sut.GetByIdAsync("test-id");
 
-        // Assert
-        var enumerable = result as Supplier[] ?? result.ToArray();
-        enumerable.Should().HaveCount(3);
-        enumerable.Should().Contain(s => s.Id == "1");
-        enumerable.Should().Contain(s => s.Id == "2");
-        enumerable.Should().Contain(s => s.Id == "3");
-    }
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal("test-id", result.Id);
+            Assert.Equal("Test Supplier", result.Description);
+            Assert.Equal("Test Address", result.Address);
+            Assert.Equal("File", result.Source);
+        }
 
-    [Fact]
-    public void InsertSupplier_WithValidSupplier_AddsToList()
-    {
-        // Arrange
-        var supplier = new Supplier { Id = "4", Name = "Supp4", Address = "Add4" };
+        [Fact]
+        public async Task UpdateAsync_ShouldCallUpdateSupplier_WithCorrectData()
+        {
+            // Arrange
+            var request = new UnifiedRequestModel
+            {
+                Id = "test-id",
+                Description = "Updated Supplier",
+                Address = "Updated Address"
+            };
 
-        // Act
-        _loader.InsertSupplier(supplier);
-        var result = _loader.LoadSuppliers();
+            // Act
+            await _sut.UpdateAsync(request);
 
-        // Assert
-        result.Should().Contain(s => s.Id == "4");
-    }
+            // Assert
+            _loaderMock.Verify(x => x.UpdateSupplier(It.Is<Supplier>(s =>
+                s.Id == request.Id &&
+                s.Name == request.Description &&
+                s.Address == request.Address)), Times.Once);
+        }
 
-    [Theory]
-    [InlineData("", "Name")]
-    [InlineData("Id", "")]
-    public void InsertSupplier_WithInvalidData_ThrowsApiException(string id, string name)
-    {
-        // Arrange
-        var supplier = new Supplier { Id = id, Name = name };
+        [Fact]
+        public async Task DeleteAsync_ShouldCallDeleteSupplier_WithCorrectId()
+        {
+            // Arrange
+            var id = "test-id";
 
-        // Act
-        var act = () => _loader.InsertSupplier(supplier);
+            // Act
+            await _sut.DeleteAsync(id);
 
-        // Assert
-        act.Should().Throw<ApiException>();
-    }
+            // Assert
+            _loaderMock.Verify(x => x.DeleteSupplier(id), Times.Once);
+        }
 
-    [Fact]
-    public void UpdateSupplier_WithValidSupplier_UpdatesExistingSupplier()
-    {
-        // Arrange
-        var supplier = new Supplier { Id = "1", Name = "Updated", Address = "NewAdd" };
+        [Fact]
+        public async Task GetAllAsync_WhenLoaderReturnsEmpty_ShouldReturnEmptyList()
+        {
+            // Arrange
+            _loaderMock.Setup(x => x.LoadSuppliers())
+                .ReturnsAsync(new List<Supplier>());
 
-        // Act
-        _loader.UpdateSupplier(supplier);
-        var result = _loader.LoadSupplier("1");
+            // Act
+            var result = await _sut.GetAllAsync();
 
-        // Assert
-        result.Name.Should().Be("Updated");
-        result.Address.Should().Be("NewAdd");
-    }
+            // Assert
+            Assert.Empty(result);
+        }
 
-    [Fact]
-    public void DeleteSupplier_WithValidId_RemovesSupplier()
-    {
-        // Arrange
-        const string id = "1";
+        [Fact]
+        public async Task GetByIdAsync_WhenSupplierNotFound_ShouldReturnNull()
+        {
+            // Arrange
+            _loaderMock.Setup(x => x.LoadSupplier(It.IsAny<string>()))
+                .ReturnsAsync((Supplier)null);
 
-        // Act
-        _loader.DeleteSupplier(id);
-        var result = _loader.LoadSuppliers();
-
-        // Assert
-        result.Should().NotContain(s => s.Id == "1");
+            // Act & Assert
+            await Assert.ThrowsAsync<NullReferenceException>(() =>
+                _sut.GetByIdAsync("non-existent-id"));
+        }
     }
 }
