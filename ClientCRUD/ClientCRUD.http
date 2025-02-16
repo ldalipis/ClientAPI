@@ -1,0 +1,6 @@
+@ClientCRUD_HostAddress = https://localhost:7293
+
+GET {{ClientCRUD_HostAddress}}/items
+Accept: application/json
+
+###

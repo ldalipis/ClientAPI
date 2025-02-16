@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "MFn2nyRyHbs+6jS2aZP8GmRYm4sVHoJDO8l45tmzkao=",
+  "Source": "ClientCRUD",
+  "BasePath": "_content/ClientCRUD",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}
